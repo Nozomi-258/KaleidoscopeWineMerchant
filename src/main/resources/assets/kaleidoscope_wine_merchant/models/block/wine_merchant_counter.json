@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "top": "kaleidoscope_wine_merchant:block/counter_top",
+    "side": "kaleidoscope_wine_merchant:block/counter_side",
+    "bottom": "kaleidoscope_wine_merchant:block/counter_side"
+  }
+}

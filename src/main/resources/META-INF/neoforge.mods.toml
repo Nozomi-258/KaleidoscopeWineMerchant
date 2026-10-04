@@ -1,0 +1,70 @@
+modLoader = "javafml"
+loaderVersion = "${loader_version_range}"
+license = "${mod_license}"
+
+[[mods]]
+modId = "${mod_id}"
+version = "${mod_version}"
+displayName = "${mod_name}"
+authors = "${mod_authors}"
+logoFile = "icon.png"
+description = '''${mod_description}'''
+
+# ── Mixin 配置 ─────────────────────────────────────────────
+# 用途:按品质定价。原版「匹配 → 产出」流程中,价格由交易条目写死,
+#  NeoForge 没有对应事件,因此只能在 MerchantContainer.updateSellItem() 里
+#  改 assemble() 的返回值。
+#
+# 若此注入点失效(例如移植到其他 MC 版本后方法改名),Mixin 会直接报错
+# 而不是静默降级,日志里会出现 "Mixin apply failed"。
+# 排查步骤:
+#   1. 确认 MerchantContainer.updateSellItem() 与 MerchantOffer.assemble() 仍存在;
+#   2. 确认两者的映射名未变;
+#   3. 若已改名,同步更新 mixin/MerchantContainerMixin.java 里的 target。
+[[mixins]]
+config = "kaleidoscope_wine_merchant.mixins.json"
+
+[[dependencies.${mod_id}]]
+modId = "neoforge"
+type = "required"
+versionRange = "${neo_version_range}"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.${mod_id}]]
+modId = "minecraft"
+type = "required"
+versionRange = "${minecraft_version_range}"
+ordering = "NONE"
+side = "BOTH"
+
+# ── 硬前置:酒馆模组(提供 31 种酒)─────────────────────────
+# 注:kaleidoscope_world_liquor 自身声明了需要 tavern,所以装了世界酒类
+#     就必然有 tavern,这里只需确保 tavern 存在即可。
+[[dependencies.${mod_id}]]
+modId = "kaleidoscope_tavern"
+type = "required"
+versionRange = "[1.2.0,)"
+ordering = "AFTER"
+side = "BOTH"
+
+# ── 软前置:森罗厨房本体 ─────────────────────────────────
+# 本模组只在"同一生态"的意义上依附厨房,代码里<b>不引用</b>它的任何类或物品 ID
+# (已被审阅确认:全部 class 只出现 kaleidoscope_tavern 与 kaleidoscope_world_liquor)。
+# 因此声明为 optional:不装厨房也能跑,避免强迫用户多装一个前置。
+[[dependencies.${mod_id}]]
+modId = "kaleidoscope_cookery"
+type = "optional"
+versionRange = "[1.4.1,)"
+ordering = "AFTER"
+side = "BOTH"
+
+# ── 软前置:世界酒类(提供另外 26 种酒)─────────────────────
+# 声明为 optional:未安装时游戏照常启动,
+# WineMerchantTrades 解析物品失败会自动跳过这 26 条,只保留酒馆的酒。
+[[dependencies.${mod_id}]]
+modId = "kaleidoscope_world_liquor"
+type = "optional"
+versionRange = "[1.1.8,)"
+ordering = "AFTER"
+side = "BOTH"
