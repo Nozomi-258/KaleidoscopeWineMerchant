@@ -1,0 +1,34 @@
+name: ❓ 使用问题 / Question
+description: 不会用、配置看不懂、不确定是不是 bug
+title: "[问题] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **不确定是不是 bug 也可以在这里问。**
+        如果确认是 bug,请改用 🐛 模板,那样信息更全、更好定位。
+
+        > **English**: Ask anything here. If you are sure it is a bug, please use the
+        > 🐛 template instead.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: 你的问题
+    validations:
+      required: true
+
+  - type: input
+    id: mod-version
+    attributes:
+      label: 模组版本(如果和运行有关)
+      placeholder: "1.1.0"
+    validations:
+      required: false
+
+  - type: textarea
+    id: tried
+    attributes:
+      label: 你已经试过什么(可选)
+    validations:
+      required: false

@@ -1,0 +1,17 @@
+# 反馈入口配置
+# 让 issue 列表页顶部出现「去下载」「看说明」的按钮
+
+blank_issues_enabled: true
+
+contact_links:
+  - name: 📥 下载 / Download
+    url: https://modrinth.com/mod/kaleidoscope-wine-merchant
+    about: 下载模组最新版本,并查看完整的说明与更新日志
+
+  - name: 📖 使用说明与配置详解
+    url: https://modrinth.com/mod/kaleidoscope-wine-merchant
+    about: 物品清单、定价规则、六个品质档位、/wmc 指令的用法
+
+  - name: 💬 森罗物语模组交流
+    url: https://github.com/KaleidoscopeMods
+    about: 本模组是「森罗物语」的附属模组,前置模组本身的问题请到对应仓库反馈

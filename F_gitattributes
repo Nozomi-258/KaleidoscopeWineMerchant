@@ -1,0 +1,12 @@
+# gradlew 必须是 LF —— 带 \r 的话在 Linux / macOS 上 ./gradlew 会直接报错
+gradlew text eol=lf
+gradlew.bat text eol=crlf
+*.sh text eol=lf
+
+# 数据生成的资源统一 LF
+src/generated/**/.cache/cache text eol=lf
+src/generated/**/*.json text eol=lf
+
+# 二进制文件不做换行转换
+*.png binary
+*.jar binary

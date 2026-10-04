@@ -1,0 +1,90 @@
+name: 🐛 报告问题 / Bug report
+description: 模组报错、崩溃、行为不符合预期
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 报告前请先确认
+        - 你用的是**最新版本**(旧版本的 bug 可能已修复)
+        - 关掉游戏后**重新启动**过(NeoForge 只在启动时加载模组,退回主菜单不生效)
+        - 已看过 [Modrinth 描述页](https://modrinth.com/mod/kaleidoscope-wine-merchant) 的说明
+
+        > **English**: Please use the latest version, fully restart the game, and check the
+        > Modrinth page first. You may answer in English.
+
+  - type: input
+    id: mod-version
+    attributes:
+      label: 模组版本
+      description: 文件名里的版本号,例如 1.1.0
+      placeholder: "1.1.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: loader
+    attributes:
+      label: 运行环境
+      options:
+        - 单人游戏(存档内)
+        - 局域网 / 联机服务器
+        - 专用服务器
+        - 其他 / 不确定
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 发生了什么
+      description: 尽量写清楚"你期望怎样"和"实际怎样"
+      placeholder: |
+        期望:酒商应该收购葡萄酒
+        实际:放进去没有反应,结果槽是空的
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤
+      description: 按顺序写,让别人能重复出来
+      placeholder: |
+        1. 合成酒商柜台并放下
+        2. 等村民转职成酒商
+        3. 右键打开交易,放入普通品质的葡萄酒
+        4. 结果槽是空的
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 游戏日志
+      description: |
+        日志文件在 `.minecraft/logs/latest.log`(或 `logs/debug.log`)。
+        请搜索 `[WineMerchant]` 开头的行,把相关部分贴进来。
+
+        如果游戏崩溃,请一并提供 `crash-reports` 里的文件。
+      render: text
+    validations:
+      required: false
+
+  - type: textarea
+    id: mods
+    attributes:
+      label: 同时安装的其他模组
+      description: 如果是模组冲突,这一项很关键。不确定就贴模组列表截图。
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: 确认
+      options:
+        - label: 我使用的是最新版本,并且已经完全重启过游戏
+          required: true
+        - label: 我已经在 Issues 里搜索过,没有重复的问题
+          required: true
