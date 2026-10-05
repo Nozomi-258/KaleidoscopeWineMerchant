@@ -3,7 +3,7 @@
 > 为 Minecraft **1.21.1 / NeoForge** 制作的「森罗物语」附属模组。
 > 新增一位 **「酒商」村民职业** —— 他按**酿造品质**收购你酿的酒。
 
-**最新版本 1.1.0** · 需要 [森罗物语:酒馆](https://modrinth.com/mod/kaleidoscopetavern)
+**最新版本 1.1.3** · 需要 [森罗物语:酒馆](https://modrinth.com/mod/kaleidoscopetavern)
 
 ---
 
@@ -13,8 +13,10 @@
 
 仓库内容包括:
 
-- **完整模组源码** —— `src/main/java/`(13 个 `.java`)+ `src/main/resources/`(语言文件、贴图、配方、`neoforge.mods.toml`)
+- **完整模组源码** —— `src/main/java/`(18 个 `.java`)+ `src/main/resources/`(语言文件、贴图、配方、`neoforge.mods.toml`)
 - **构建脚本与 Gradle 包装器** —— `build.gradle`、`settings.gradle`、`gradle.properties`、`gradlew`、`gradlew.bat`、`gradle/wrapper/`
+- **一个维护用的小工具** —— `tools/audit_item_groups.py`(用途见下面「仓库里没有什么」一节)
+- **3 个 Mixin** —— 负责定价、`/wmc refresh` 补齐与升级去重(见下面「Mixin」一节)
 - 问题反馈模板(`.github/ISSUE_TEMPLATE/`)
 - 许可证(`LICENSE`)与这份说明
 
@@ -54,7 +56,7 @@ gradlew.bat build
 **产物:**
 
 ```
-build/libs/kaleidoscope_wine_merchant-1.1.0.jar
+build/libs/kaleidoscope_wine_merchant-1.1.3.jar
 ```
 
 把这个 jar 放进 `.minecraft/mods/` 即可(客户端与服务端都要放)。
@@ -79,15 +81,20 @@ build/libs/kaleidoscope_wine_merchant-1.1.0.jar
 
 ### 验证状态(如实说明)
 
-- ✅ **已在作者本机验证**:Windows 11 + JDK 21.0.12.1 + Gradle 8.10,`gradlew.bat build` 与 `gradle build` 都**构建成功**,产出 `kaleidoscope_wine_merchant-1.1.0.jar`(92,130 字节),且与作者发布的构建产物**逐条目内容一致**(70/70 个 zip 条目 CRC 相同)。
+- ✅ **1.1.3 已在作者本机构建并实测**:Windows 11 + JDK 21.0.12.1 + Gradle 8.10,`gradlew.bat build` 与 `gradle build` 都**构建成功**,产出 `kaleidoscope_wine_merchant-1.1.3.jar`,并在游戏内实测过定价、`/wmc refresh` 与升级去重。
+- ✅ **本仓库的源码与 1.1.3 源码逐文件一致**(2026-10-06):对 `src/` 做了 **sha256 逐文件比对**,**36/36 个文件**(18 个 `.java` + 18 个资源文件)全部相同;`kaleidoscope_wine_merchant.mixins.json` 里注册的 **3 个 Mixin** 与源码里的 3 个 Mixin 类**一一对应**(这正是 1.1.2 启动崩溃的成因,见下面「Mixin」一节)。
 - ✅ **Gradle 包装器已验证**:`gradlew` 会按 `gradle/wrapper/gradle-wrapper.properties` 下载 **Gradle 8.10**,实测下载与校验均正常。
-- ✅ **已在「干净克隆」上验证**(2026-10-04):把仓库里**要上传的 46 个文件**复制到一个全新目录(排除 `local/`、`build/`、`.gradle/`、`runs/`),用**仓库自带的 `gradlew.bat build`**(而不是本机 Gradle)构建 → **BUILD SUCCESSFUL**,产出 92,130 字节的 jar,与作者发布产物**70/70 个 zip 条目逐字节一致**(整体 SHA256 不同仅因 zip 内嵌时间戳)。
+- ✅ **历史上做过一次「干净克隆」验证**(2026-10-04,当时是 1.1.0):把仓库里要上传的文件复制到一个全新目录(排除 `local/`、`build/`、`.gradle/`、`runs/`),用**仓库自带的 `gradlew.bat build`**(而不是本机 Gradle)构建 → **BUILD SUCCESSFUL**,产物与作者发布 jar 的 **70/70 个 zip 条目逐字节一致**(整体 SHA256 不同仅因 zip 内嵌时间戳)。
 - ⚠️ **「完全冷缓存」的真实耗时仍未实测。** `GRADLE_USER_HOME` 里已有 NeoForge / Minecraft 依赖,干净克隆那次构建用了约 2分40秒(暖缓存)。**首次从零下载 Gradle + NeoForge + Minecraft 依赖的耗时是估计值**(上面写的「十几分钟到半小时」),且**国内网络可能很慢或超时**。
+- ⚠️ **本次(1.1.3)只做了文件级校验,没有重新跑一遍构建。** 上面那条「36/36 一致」是 sha256 比对,证明仓库里的源码就是作者实测过的 1.1.3 源码,但**不等于**我在这台机器上重新构建过;1.1.3 也没有在**第二台干净机器 / 冷缓存**上验证过。
 - ⚠️ **只在 Windows 上验证过构建**,Linux / macOS 未实测(`gradlew` 已按 LF 换行提交,理论上可用)。
 
 ### 仓库里没有什么
 
-- **没有** `tools/` 目录。作者本机的辅助脚本(语言文件生成、贴图渲染、图标同步、UV 分析等)依赖本机绝对路径与本地游戏实例,**不是构建所需内容**,故未包含。
+- **`tools/` 里只有一个文件** —— `tools/audit_item_groups.py`,一个**维护用**的分类一致性审计脚本:它把 `WineGroups.java` 里每种酒的「有无品质 / 原料份数」与前置模组 jar 里的真实配方逐项对照,前置模组更新、加了新酒之后跑一遍,就能确认分类没漏、原料数没写错(详细说明写在脚本头部)。
+  - 它**不含任何本机绝对路径**:模组目录用 `--mods "<你的 .minecraft/mods>"` 或环境变量 `KWM_MODS_DIR` 指定,`WineGroups.java` 自动从仓库里定位;只依赖 Python 标准库。
+  - 用法:`python tools/audit_item_groups.py --mods "<你的 .minecraft/mods>"`(加 `--strict` 则在发现差异时返回非 0,可接进 CI)。
+  - 作者本机其余的一次性辅助脚本(语言文件生成、贴图渲染、图标同步、UV 分析等)**没有**包含 —— 它们依赖本机绝对路径与本地游戏实例,不是构建所需内容。
 - **没有**前置模组的 jar(`libs/`)、构建产物(`build/`)、运行目录(`run/`、`runs/`)—— 都已被 `.gitignore` 忽略。
 
 ## 下载 / Download
@@ -172,8 +179,9 @@ build/libs/kaleidoscope_wine_merchant-1.1.0.jar
 ## 仓库结构 / Repository layout
 
 ```
-src/main/java/com/example/kaleidoscope/winemerchant/   模组源码(13 个 .java)
+src/main/java/com/example/kaleidoscope/winemerchant/   模组源码(18 个 .java)
 src/main/resources/                                    资源:语言文件、贴图、配方、neoforge.mods.toml
+tools/audit_item_groups.py                             分类一致性审计脚本(维护用,非构建所需)
 build.gradle                                           构建脚本(NeoForge 21.1.252)
 settings.gradle                                        插件仓库 + foojay JDK 21 自动解析
 gradle.properties                                      版本号与模组元数据(不含本机路径)
@@ -183,6 +191,53 @@ LICENSE                                                许可证(MIT)
 ```
 
 > `local/` 是作者本机的工作文档,已被 `.gitignore` 忽略,不会出现在 GitHub 上。
+
+## Mixin 与一条必须遵守的约束 / Mixins
+
+本模组用 **3 个 Mixin** 做原版事件做不到的事:
+
+| Mixin 类 | 目标类 | 作用 |
+|---|---|---|
+| `mixin/MerchantContainerMixin` | `MerchantContainer` | **按品质定价**:`@Redirect` 掉 `MerchantOffer.assemble()` 的返回值,在产出进入结果槽之前按玩家实际放入那件酒的品质改数量 |
+| `mixin/VillagerTradeInvoker` | `AbstractVillager` | 用 `@Invoker` 暴露原版 `protected` 的 `addOffersFromItemListings(...)`,让 `/wmc refresh` 之后能**补齐**已有村民的交易条数(不再越 refresh 越少) |
+| `mixin/VillagerTradeDedupeMixin` | `Villager` | **升级去重**:`@Inject` 到 `increaseMerchantCareer` 的 TAIL,酒商升级后去掉重复的收购交易 |
+
+三个类都注册在 `src/main/resources/kaleidoscope_wine_merchant.mixins.json` 的 `mixins` 数组里,
+**这个列表必须与源码里的 Mixin 类一一对应**:漏注册 → 功能静默失效;注册了不存在的类 → 启动即崩。
+
+### ⚠️ 铁律:`@Mixin` 类里不能有非 `private` 的 `static` 方法
+
+> **`@Mixin` 类中,除注入器方法(`@Inject` / `@Redirect` / `@ModifyVariable` 等)、
+> `@Shadow`、`@Invoker`、`@Accessor` 之外,其他成员必须是 `private static`。**
+
+`public static` / `protected static` 会被 Mixin 框架直接拒绝,后果是**游戏在启动阶段崩溃**,
+而且**编译期完全发现不了**(`javac` 不报错、`build` 也能成功):
+
+```
+[FATAL] [mixin/]: Mixin apply for mod kaleidoscope_wine_merchant failed
+org.spongepowered.asm.mixin.transformer.throwables.InvalidMixinException:
+  Mixin ... contains non-private static method dedupeBuyOffers(...)
+  at MixinApplicatorStandard.checkMethodVisibility
+```
+
+**1.1.2 就是栽在这上面** —— 升级去重的辅助方法一开始写在了 Mixin 类里。1.1.3 的修法是:
+**共享逻辑放进普通类**,Mixin 只留注入器并调用它 —— 去重逻辑现在在 `trade/TradeDedupe.java`,
+`VillagerTradeDedupeMixin` 只负责调用。
+
+**改完 Mixin 请自检**(构建后跑一次,能提前发现同类问题):
+
+```bash
+javap -p -cp build/libs/kaleidoscope_wine_merchant-1.1.3.jar \
+  com.example.kaleidoscope.winemerchant.mixin.VillagerTradeDedupeMixin
+```
+
+输出里**不应出现任何 `static` 方法**(构造器除外)。
+
+> **English**: This mod ships **3 Mixins** (quality-based pricing, an `@Invoker` exposing a
+> vanilla `protected` method, and trade de-duplication on level-up). **Never put a
+> non-`private static` method in a `@Mixin` class** — Mixin rejects it and the game crashes
+> at startup, while compilation stays green. Keep shared helpers in normal classes
+> (see `trade/TradeDedupe.java`).
 
 ## 反馈 / Feedback
 
