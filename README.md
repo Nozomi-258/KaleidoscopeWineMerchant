@@ -175,7 +175,8 @@ build/libs/kaleidoscope_wine_merchant-1.1.3.jar
 | [森罗物语:酒馆](https://modrinth.com/mod/kaleidoscopetavern) | `1.2.0+` | **必需** —— 提供品质组件与酒类物品 |
 | [森罗物语:世界酒](https://modrinth.com/mod/kaleidoscope-world-liquor) | `1.1.8+` | 可选 —— 多 26 种酒 |
 | [森罗物语:厨房](https://modrinth.com/mod/kaleidoscope-cookery) | `1.4.1+` | 可选 —— 代码里并未引用 |
-（或在CurseForge上寻找）
+
+> （以上模组在CurseForge上也能找到）
 
 **客户端与服务端都需要安装。**
 
