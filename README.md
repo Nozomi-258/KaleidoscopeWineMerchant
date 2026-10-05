@@ -10,6 +10,7 @@
 ## 关于这个仓库 / About this repository
 
 **这里是模组的完整源码仓库,同时也是问题反馈入口。**
+（以下构建说明主要由AI帮我编写，请谨慎判断）
 
 仓库内容包括:
 
@@ -103,7 +104,11 @@ build/libs/kaleidoscope_wine_merchant-1.1.3.jar
 
 **<https://modrinth.com/mod/kaleidoscope-wine-merchant>**
 
-> ⚠️ **该项目尚未公开发布**,现在点开可能显示 404。发布之后这个链接即可正常访问,README 不需要改动。
+或 **CurseForge**:
+
+**<https://www.curseforge.com/minecraft/mc-mods/kaleidoscope-wine-merchant>**
+
+> ⚠️ **Modrinth项目尚未公开发布**,现在点开可能显示 404。发布之后这个链接即可正常访问。
 
 安装方式:把 jar 放进 `.minecraft/mods/`,并确认下面的**必需前置模组**都已安装。
 **客户端与服务端都要安装。**
@@ -170,6 +175,7 @@ build/libs/kaleidoscope_wine_merchant-1.1.3.jar
 | [森罗物语:酒馆](https://modrinth.com/mod/kaleidoscopetavern) | `1.2.0+` | **必需** —— 提供品质组件与酒类物品 |
 | [森罗物语:世界酒](https://modrinth.com/mod/kaleidoscope-world-liquor) | `1.1.8+` | 可选 —— 多 26 种酒 |
 | [森罗物语:厨房](https://modrinth.com/mod/kaleidoscope-cookery) | `1.4.1+` | 可选 —— 代码里并未引用 |
+（或在CurseForge上寻找）
 
 **客户端与服务端都需要安装。**
 
@@ -220,7 +226,7 @@ org.spongepowered.asm.mixin.transformer.throwables.InvalidMixinException:
   at MixinApplicatorStandard.checkMethodVisibility
 ```
 
-**1.1.2 就是栽在这上面** —— 升级去重的辅助方法一开始写在了 Mixin 类里。1.1.3 的修法是:
+**1.1.2的某一个内测版本就是栽在这上面** —— 升级去重的辅助方法一开始写在了 Mixin 类里。1.1.3 的修法是:
 **共享逻辑放进普通类**,Mixin 只留注入器并调用它 —— 去重逻辑现在在 `trade/TradeDedupe.java`,
 `VillagerTradeDedupeMixin` 只负责调用。
 
