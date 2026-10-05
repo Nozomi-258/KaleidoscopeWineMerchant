@@ -263,7 +263,7 @@ javap -p -cp build/libs/kaleidoscope_wine_merchant-1.1.3.jar \
 3. 在 [Issues](../../issues?q=is%3Aissue) 里搜索过,没有重复
 4. 前置模组都装齐了(见上面「依赖」一节)
 
-**报 bug 时请附上日志** —— 文件在 `.minecraft/logs/latest.log`,
+**可以的话报 bug 时请附上日志** —— 文件在 `.minecraft/logs/latest.log`,
 搜索 `[WineMerchant]` 开头的行贴进来即可;如果游戏崩溃,再附上 `crash-reports` 里的文件。
 
 **English is welcome.** You can write your issue in English.
