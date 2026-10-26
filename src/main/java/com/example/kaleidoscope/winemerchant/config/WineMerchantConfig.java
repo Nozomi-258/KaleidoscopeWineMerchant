@@ -81,7 +81,6 @@ public final class WineMerchantConfig {
     public final Map<String, ModConfigSpec.IntValue[]> drinkPrices = new HashMap<>();
     /** 无品质物品的单一价格(物品 id -> 价格) */
     public final Map<String, ModConfigSpec.IntValue> flatPrices = new HashMap<>();
-    public final ModConfigSpec.IntValue[] playerSellsPrices = new ModConfigSpec.IntValue[6];
 
     // ── 醋:特殊批量模式 ──
     public final ModConfigSpec.BooleanValue vinegarBulkEnabled;
@@ -287,16 +286,7 @@ public final class WineMerchantConfig {
         }
         b.pop();
 
-        b.comment("鸡尾酒收购价:玩家把鸡尾酒卖给村民时,村民付的价格。",
-                        "所有鸡尾酒共用这一套 6 档价格。")
-                .translation("kaleidoscope_wine_merchant.configuration.prices.player_sells")
-                .push("player_sells");
-        for (int q = 1; q <= 6; q++) {
-            playerSellsPrices[q - 1] = b.comment(qualityName(q) + "的收购价(0 = 不收)。")
-                    .translation("kaleidoscope_wine_merchant.configuration.prices.player_sells.q" + q)
-                    .defineInRange("q" + q, WineGroups.BASE_PRICES.get(q - 1), 0, 64);
-        }
-        b.pop();
+        
 
         b.pop(); // prices
     }
@@ -542,15 +532,6 @@ public final class WineMerchantConfig {
 
     public int priceDrink(String id, int quality) {
         return price(drinkPrices, "prices.drinks", id, quality);
-    }
-
-    public int pricePlayerSellsCocktail(int quality) {
-        if (quality < 1 || quality > 6) {
-            return 0;
-        }
-        int fallback = WineGroups.BASE_PRICES.get(quality - 1);
-        return readInt(playerSellsPrices[quality - 1],
-                "prices.player_sells.q" + quality, fallback);
     }
 
     /**

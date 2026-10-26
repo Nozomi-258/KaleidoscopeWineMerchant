@@ -48,15 +48,23 @@ public final class ModDataComponents {
      *                      用于「等级识货」比较
      * @param flat         该物品<b>没有酿造品质</b>,价格固定为 {@code perQuality} 的第 3 项
      *                     (即"普通品质"档的值),不按放入物品的品质变化
+     * @param uniform      <b>统一价格模式(FLAT)</b>在<b>生成交易表时</b>就被烘焙进载荷。
+     *
+     *                     <p><b>为什么必须烘焙、不能在结算时读配置</b>:{@code assemble()} 会在
+     *                     <b>客户端和服务器各跑一次</b>(客户端用来显示结果槽预览)。
+     *                     如果结算时去读配置,两边读到的值可能不一致 ——
+     *                     曾经因此出现「结果槽显示 1、实际成交 3」。
+     *                     烘焙进载荷后,两边读的是同一条交易数据,必然一致。
      */
     public record QualityPricedWine(String wineId, List<Integer> perQuality, int baselineLevel,
-                                    boolean flat) {
+                                    boolean flat, boolean uniform) {
 
         public static final Codec<QualityPricedWine> CODEC = RecordCodecBuilder.create(inst -> inst.group(
                 Codec.STRING.fieldOf("wine").forGetter(QualityPricedWine::wineId),
                 Codec.INT.listOf().fieldOf("emeralds").forGetter(QualityPricedWine::perQuality),
                 Codec.INT.optionalFieldOf("baseline", 5).forGetter(QualityPricedWine::baselineLevel),
-                Codec.BOOL.optionalFieldOf("flat", false).forGetter(QualityPricedWine::flat)
+                Codec.BOOL.optionalFieldOf("flat", false).forGetter(QualityPricedWine::flat),
+                Codec.BOOL.optionalFieldOf("uniform", false).forGetter(QualityPricedWine::uniform)
         ).apply(inst, QualityPricedWine::new));
 
         /** 取某档品质该给的绿宝石数;不收或越界返回 0。 */
@@ -68,12 +76,25 @@ public final class ModDataComponents {
         }
 
         /**
+         * 结算时该按哪个品质档取价。
+         *
+         * <p>统一价格模式(uniform)一律按「普通品质」(档位 3);否则按放入物品的实际品质。
+         */
+        public int pricingQuality(int actualQuality) {
+            return (flat || uniform) ? 3 : actualQuality;
+        }
+
+        /**
          * 实际要给的绿宝石数。
          *
-         * <p>无品质物品(flat)只看"普通品质"那一档,不随放入物品的品质变化。
+         * <p>无品质物品(flat)与统一价格模式(uniform)都只看"普通品质"那一档,
+         * 不随放入物品的品质变化。
+         *
+         * <p><b>纯函数</b>:只依赖本载荷,不读任何配置 —— 这样客户端与服务器
+         * 用同一条交易数据必然算出同一个数,结果槽不会与实际成交不一致。
          */
         public int payout(int actualQuality) {
-            return flat ? emeraldsFor(3) : emeraldsFor(actualQuality);
+            return emeraldsFor(pricingQuality(actualQuality));
         }
     }
 

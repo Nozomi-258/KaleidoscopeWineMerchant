@@ -3,18 +3,27 @@ package com.example.kaleidoscope.winemerchant.trade;
 import com.example.kaleidoscope.winemerchant.KaleidoscopeWineMerchant;
 import com.example.kaleidoscope.winemerchant.config.WineGroups;
 import com.example.kaleidoscope.winemerchant.config.WineMerchantConfig;
+import com.example.kaleidoscope.winemerchant.mixin.VillagerTradeInvoker;
 import com.example.kaleidoscope.winemerchant.registry.ModProfessions;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.npc.AbstractVillager;
+import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.entity.npc.VillagerTrades;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.trading.MerchantOffer;
+import net.minecraft.world.item.trading.MerchantOffers;
+import net.minecraft.world.phys.AABB;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.common.BasicItemListing;
 import net.neoforged.neoforge.event.village.VillagerTradesEvent;
@@ -211,6 +220,142 @@ public final class WineMerchantTrades {
         return mine;
     }
 
+    // ──────────────────── refresh 后修补已存在的村民 ────────────────────
+
+    /** 原版每升一级抽取的交易条数({@code Villager.updateTrades} 里的常量 2)。 */
+    private static final int OFFERS_PER_LEVEL = 2;
+
+    /**
+     * 把已加载村民的交易**补齐**到它当前等级应有的条数。
+     *
+     * <h2>为什么必须做这一步</h2>
+     * 原版从不在运行时改动 {@code VillagerTrades.TRADES} —— 那张表只在世界加载时构建一次,
+     * 之后村民**每次升级**({@code increaseMerchantCareer})都按自己的 {@code level}
+     * 从表里抽 {@value #OFFERS_PER_LEVEL} 条**追加**到自己的 offers。
+     * 所以满级村民正常有约 10 条。
+     *
+     * <p>{@code /wmc refresh} 为了即时生效,在运行中重写了那张表。
+     * 副作用是已存在的村民失去了靠升级累积的条目:
+     * <b>老手(3 级)原本 4 条,refresh 后只剩 2 条;之后每升一级只加 2 条,
+     * 满级也补不回 10 条。</b>
+     *
+     * <p>这里按 {@code 等级 × 2} 算出应有条数,缺多少就再抽多少追加进去 ——
+     * <b>保留玩家已有的交易,只补差额</b>,不做清空重抽(那会让已完成次数的交易凭空消失)。
+     *
+     * @return 两个数:{@code [0]} = 找到的酒商数量,{@code [1]} = 实际补上的交易条数
+     */
+    public static int[] refillVillagersNear(ServerPlayer player, double radius) {
+        if (player == null) {
+            return new int[]{0, 0};
+        }
+        VillagerProfession prof = ModProfessions.WINE_MERCHANT.get();
+        Int2ObjectMap<VillagerTrades.ItemListing[]> table = VillagerTrades.TRADES.get(prof);
+        if (table == null || table.isEmpty()) {
+            return new int[]{0, 0};
+        }
+
+        // 用玩家所在维度 + 以玩家为中心的方盒取村民(与指令的 radius 语义一致)
+        ServerLevel level = player.serverLevel();
+        AABB box = player.getBoundingBox().inflate(radius);
+        int found = 0;
+        int rebuilt = 0;   // 被重建的村民数(不是"新增条数")
+        int totalOffers = 0;
+        for (AbstractVillager av : level.getEntitiesOfClass(AbstractVillager.class, box)) {
+            if (!(av instanceof Villager villager)
+                    || villager.getVillagerData().getProfession() != prof) {
+                continue;
+            }
+            found++;
+            int after = refillOne(villager, table);
+            if (after > 0) {
+                rebuilt++;
+                totalOffers += after;
+            }
+        }
+        if (rebuilt > 0) {
+            KaleidoscopeWineMerchant.LOGGER.info(
+                    "[WineMerchant] 找到 {} 名酒商,已按新表重建其中 {} 名的交易(合计 {} 条)",
+                    found, rebuilt, totalOffers);
+        } else {
+            KaleidoscopeWineMerchant.LOGGER.info(
+                    "[WineMerchant] 找到 {} 名酒商,但新表抽不出交易(检查配置是否把物品全关了)", found);
+        }
+        return new int[]{found, rebuilt};
+    }
+
+    /**
+     * 按新交易表重新填充单个村民的交易。
+     *
+     * @return 重建后该村民的交易条数;新表抽不出任何交易时返回 0
+     *
+     * <h2>为什么不能只"补差额"</h2>
+     * 曾经的实现只在 {@code offers.size() < 等级×2} 时补齐,条数够了就直接返回 ——
+     * 结果对交易正常的村民,**refresh 等于什么都没做**,玩家改了价格/开关却看不到变化。
+     * 而 {@code /wmc refresh} 的核心价值恰恰是"不重启就让配置生效"。
+     *
+     * <h2>做法</h2>
+     * <ol>
+     *   <li>清空该村民的交易列表</li>
+     *   <li>按它的等级,从**新表**里每级抽 {@value #OFFERS_PER_LEVEL} 条 ——
+     *       等价于原版"从 1 级一路升到当前等级"的过程,条数自然回到正常上限</li>
+     *   <li>若新表条数不足(某些等级池子为空),再按实际抽到的结果尽量补足</li>
+     * </ol>
+     *
+     * <p><b>代价(如实说明)</b>:已经成交过的交易记录(剩余次数)会重置 ——
+     * 因为交易对象整个换了。这是"立即生效"必须付出的代价:原版从不支持运行中改交易表,
+     * 我们既然要做,就只能重建村民的交易列表。
+     */
+    private static int refillOne(Villager villager, Int2ObjectMap<VillagerTrades.ItemListing[]> table) {
+        int level = Math.max(1, Math.min(5, villager.getVillagerData().getLevel()));
+        MerchantOffers offers = villager.getOffers();
+
+        // ① 清空后按等级逐级重抽 —— 这样内容跟着新表走,条数也是正常上限
+        //
+        //   ⚠ 必须逐级抽完再统一去重(见 ③)。
+        //     未开「酒类分档」时,每种酒都被登记到**全部 5 个等级**
+        //     (buildItemBuys 里 levels = ALL_LEVELS),于是同一瓶酒在每一级
+        //     都可能被抽中 —— 村民升级时逐级追加,就会出现
+        //     「同一个交易表里两条梅酒 / 两条白兰地」这种重复。
+        //     原版不会遇到:它的每级池子差异很大且与等级强绑定。
+        offers.clear();
+        VillagerTradeInvoker invoker = (VillagerTradeInvoker) (Object) villager;
+        List<MerchantOffer> picked = new ArrayList<>();
+        for (int lv = 1; lv <= level; lv++) {
+            VillagerTrades.ItemListing[] listings = table.get(lv);
+            if (listings == null || listings.length == 0) {
+                continue;
+            }
+            // 先抽到一个临时列表,便于按物品去重后再放进村民的 offers
+            MerchantOffers staged = new MerchantOffers();
+            invoker.wineMerchant$addOffers(staged, listings, OFFERS_PER_LEVEL);
+            picked.addAll(staged);
+        }
+
+        // ② 兜底:新表在某些等级池子为空时,上面可能一条都抽不到。
+        if (picked.isEmpty()) {
+            for (int lv = 1; lv <= level && picked.isEmpty(); lv++) {
+                VillagerTrades.ItemListing[] listings = table.get(lv);
+                if (listings != null && listings.length > 0) {
+                    MerchantOffers staged = new MerchantOffers();
+                    invoker.wineMerchant$addOffers(staged, listings, OFFERS_PER_LEVEL);
+                    picked.addAll(staged);
+                }
+            }
+        }
+
+        // ③ 去重:同一种「收购品」只保留一条(保留先抽到的那条)。
+        //   收购类交易的 costA 就是要收购的酒,用它作为唯一键;
+        //   出售类交易(玩家花绿宝石买鸡尾酒)的 costA 是绿宝石,那种不去重 ——
+        //   原版允许多条不同的出售交易,而且它们本来就该各不相同。
+        offers.addAll(picked);
+        TradeDedupe.dedupeBuyOffers(offers);
+
+        // 注意:返回的是**重建后的条数**,不是"新增条数"。
+        //   重建前后条数往往相同(等级×2 → 等级×2),若返回差值就会恒为 0,
+        //   调用方便无法区分"重建成功"和"没能重建"。
+        return offers.size();
+    }
+
     /** 各类别在本轮构建中的条目数(由构建过程直接统计,不做反向推断)。 */
     private static final Map<Kind, Integer> KIND_COUNTS = new java.util.EnumMap<>(Kind.class);
 
@@ -366,19 +511,67 @@ public final class WineMerchantTrades {
             };
             perQuality.add(Math.max(0, price));
         }
-        ItemStack result = ModDataComponents.mark(new ItemStack(Items.EMERALD, 1),
-                new ModDataComponents.QualityPricedWine(id, perQuality, baselineLevel, flat));
+        // ── 交易条目自带的绿宝石数量必须接近真实收益 ──
+        //
+        // 原版有两个地方显示价格,用**不同**的来源:
+        //   ① 左侧交易列表   → merchantoffer.getResult()   ← 条目自带的数量
+        //   ② 右侧结果槽     → merchantoffer.assemble()    ← 被 Mixin 改成按品质实算
+        //
+        // 早期版本 result 写死 1,于是列表永远显示"1 个绿宝石",而典藏酒实际给 3 ——
+        // 玩家会以为算错了。现在让 result 带上**基准价**,两处就一致了。
+        //
+        // 用普通品质(档位 3)作为展示基准,因为:
+        //   · 它是六档的中间档,也是 FLAT 统一价格模式使用的档位
+        //   · 玩家放更低品质的酒会少拿、更高品质会多拿,列表显示的是"标准价"
+        //
+        // ★ 同时把「统一价格模式」烘焙进载荷 —— 见 ModDataComponents 的说明。
+        //   结算时不再读配置,否则客户端与服务器可能算出不同数量。
+        boolean uniform = cfg.isFlatPricing();
+        int shownEmeralds = shownPrice(perQuality, flat, uniform);
+        ItemStack result = ModDataComponents.mark(new ItemStack(Items.EMERALD, shownEmeralds),
+                new ModDataComponents.QualityPricedWine(id, perQuality, baselineLevel, flat, uniform));
 
         int n = 0;
         for (int level : levels) {
-            // result 数量保持 1:交易列表显示"1 个绿宝石"作为最低保证,
-            // 实际数量由 Mixin 按放入物品的品质算出(只会 ≥ 1)。
             addTo(level, new BasicItemListing(stack.copyWithCount(1), result.copy(),
                     BUY_MAX_USES, 2, 0.0F));
             n++;
         }
         countKind(kind, n);
         return n;
+    }
+
+    /**
+     * 交易列表上该显示的绿宝石数量 —— <b>最低被收档位的价,即保底价</b>。
+     *
+     * <h2>为什么用最低档而不是普通档</h2>
+     * 左侧列表只是一个**静态数字**,无法随放入物品的品质变化;而实际付款走
+     * {@code MerchantContainerMixin}(按实际品质查表)。两者不可能用同一个数表达完整语义,
+     * 所以必须选一个**不会骗人**的口径:
+     *
+     * <ul>
+     *   <li>取「最低被收档位」→ 列表 = 保底价,实付永远 ≥ 它。
+     *       玩家看到的是"至少给这么多",不会出现"列表写得多、实付给得少"的落差。</li>
+     *   <li>取「普通档(q3)」→ 一旦配置把低品质档位设得比 q3 低,
+     *       列表就会**高于**那些档位的实付,玩家会觉得被骗。</li>
+     * </ul>
+     *
+     * <p><b>曾经的做法</b>:展示价取 q3,并在 Mixin 里加下限"实付不低于展示价"。
+     * 那等于把配置里较低的档位**整个顶掉**(q2=1、q3=3 时劣质酒也给 3),
+     * 使"按品质定价"这个核心功能在部分配置下失效。现已移除下限,改为本口径。
+     *
+     * <p>无品质物品(flat)与统一价格模式(uniform)只有一档真实价格,直接取它。
+     * 全部档位都是 0(整瓶都不收)时返回 1 —— 此时 Mixin 会把结果槽置空、
+     * 交易不可成交,数量本身没有意义。
+     */
+    private static int shownPrice(List<Integer> perQuality, boolean flat, boolean uniform) {
+        if (flat || uniform) {
+            // 无品质物品 / 统一价格模式:只有一档真正的价格
+            return Math.max(1, perQuality.size() >= 3 ? perQuality.get(2) : 1);
+        }
+        // 按品质模式:取**最低的非零档价**作为保底价
+        int lowest = perQuality.stream().filter(v -> v > 0).min(Integer::compareTo).orElse(0);
+        return Math.max(1, lowest);
     }
 
     // ──────────────────── 村民出售鸡尾酒 ────────────────────

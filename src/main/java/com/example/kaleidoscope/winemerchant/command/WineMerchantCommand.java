@@ -16,12 +16,16 @@ import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.synchronization.ArgumentTypeInfo;
+import net.minecraft.commands.synchronization.ArgumentTypeInfos;
+import net.minecraft.core.registries.Registries;
+import net.neoforged.neoforge.registries.DeferredHolder;
+import net.neoforged.neoforge.registries.DeferredRegister;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.npc.Villager;
-import net.minecraft.world.entity.npc.VillagerProfession;
-import net.minecraft.world.phys.AABB;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.common.ModConfigSpec;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
@@ -76,6 +80,27 @@ public final class WineMerchantCommand {
                 return b.buildFuture();
             };
 
+    /**
+     * 自定义参数类型 {@link RawStringArgumentType} 的注册表项。
+     *
+     * <p><b>为什么必须注册</b>:原版要把整棵指令树打包发给客户端
+     * ({@code ClientboundCommandsPacket}),途中用
+     * {@code ArgumentTypeInfos.byClass(argType)} 查"这个参数类型怎么序列化"。
+     * 查不到就抛 {@code IllegalArgumentException: Unrecognized argument type},
+     * 导致 <b>玩家进不了世界</b>(客户端提示"无效的数据")。
+     *
+     * <p>注册方式与原版 {@code SingletonArgumentInfo} 一致:
+     * 通过 {@code DeferredRegister<ArgumentTypeInfo>} 登记,
+     * 再在模组构造里挂到 {@code modEventBus}。
+     */
+    public static final DeferredRegister<ArgumentTypeInfo<?, ?>> ARGUMENT_TYPES =
+            DeferredRegister.create(Registries.COMMAND_ARGUMENT_TYPE, KaleidoscopeWineMerchant.MOD_ID);
+
+    public static final DeferredHolder<ArgumentTypeInfo<?, ?>, RawStringArgumentInfo> RAW_STRING_ARG =
+            ARGUMENT_TYPES.register("raw_string",
+                    () -> ArgumentTypeInfos.registerByClass(
+                            RawStringArgumentType.class, RawStringArgumentInfo.INSTANCE));
+
     /** 指令反馈的翻译键前缀 */
     private static final String NS = "commands.kaleidoscope_wine_merchant.wmc.";
 
@@ -94,28 +119,28 @@ public final class WineMerchantCommand {
                 .executes(WineMerchantCommand::help)
 
                 .then(Commands.literal("price")
-                        .then(Commands.argument("item", StringArgumentType.word())
+                        .then(Commands.argument("item", RawStringArgumentType.rawString())
                                 .suggests(IDS)
                                 .then(Commands.argument("quality", IntegerArgumentType.integer(1, 6))
                                         .then(Commands.argument("value", IntegerArgumentType.integer(0, 64))
                                                 .executes(WineMerchantCommand::setPrice)))))
 
                 .then(Commands.literal("enable")
-                        .then(Commands.argument("item", StringArgumentType.word())
+                        .then(Commands.argument("item", RawStringArgumentType.rawString())
                                 .suggests(IDS)
                                 .executes(c -> setEnabled(c, true))))
                 .then(Commands.literal("disable")
-                        .then(Commands.argument("item", StringArgumentType.word())
+                        .then(Commands.argument("item", RawStringArgumentType.rawString())
                                 .suggests(IDS)
                                 .executes(c -> setEnabled(c, false))))
 
                 .then(Commands.literal("sell")
-                        .then(Commands.argument("cocktail", StringArgumentType.word())
+                        .then(Commands.argument("cocktail", RawStringArgumentType.rawString())
                                 .suggests(COCKTAILS)
                                 .then(Commands.argument("value", BoolArgumentType.bool())
                                         .executes(c -> setCocktail(c, true)))))
                 .then(Commands.literal("buy")
-                        .then(Commands.argument("cocktail", StringArgumentType.word())
+                        .then(Commands.argument("cocktail", RawStringArgumentType.rawString())
                                 .suggests(COCKTAILS)
                                 .then(Commands.argument("value", BoolArgumentType.bool())
                                         .executes(c -> setCocktail(c, false)))))
@@ -123,10 +148,10 @@ public final class WineMerchantCommand {
                 .then(Commands.literal("blacklist")
                         .then(Commands.literal("list").executes(WineMerchantCommand::blacklistList))
                         .then(Commands.literal("add")
-                                .then(Commands.argument("item", StringArgumentType.word())
+                                .then(Commands.argument("item", RawStringArgumentType.rawString())
                                         .executes(c -> blacklistModify(c, true))))
                         .then(Commands.literal("remove")
-                                .then(Commands.argument("item", StringArgumentType.word())
+                                .then(Commands.argument("item", RawStringArgumentType.rawString())
                                         .executes(c -> blacklistModify(c, false)))))
 
                 .then(Commands.literal("mode")
@@ -164,7 +189,7 @@ public final class WineMerchantCommand {
     }
 
     private static int setPrice(CommandContext<CommandSourceStack> c) {
-        String id = resolveId(StringArgumentType.getString(c, "item"));
+        String id = resolveId(RawStringArgumentType.getRawString(c, "item"));
         if (id == null) {
             err(c, NS + "error.item_not_found");
             return 0;
@@ -187,7 +212,7 @@ public final class WineMerchantCommand {
     }
 
     private static int setEnabled(CommandContext<CommandSourceStack> c, boolean enabled) {
-        String id = resolveId(StringArgumentType.getString(c, "item"));
+        String id = resolveId(RawStringArgumentType.getRawString(c, "item"));
         if (id == null) {
             err(c, NS + "error.item_not_found");
             return 0;
@@ -207,7 +232,7 @@ public final class WineMerchantCommand {
     }
 
     private static int setCocktail(CommandContext<CommandSourceStack> c, boolean sellSide) {
-        String id = resolveId(StringArgumentType.getString(c, "cocktail"));
+        String id = resolveId(RawStringArgumentType.getRawString(c, "cocktail"));
         boolean value = BoolArgumentType.getBool(c, "value");
         if (id == null) {
             err(c, NS + "error.cocktail_not_found");
@@ -242,7 +267,7 @@ public final class WineMerchantCommand {
     }
 
     private static int blacklistModify(CommandContext<CommandSourceStack> c, boolean add) {
-        String raw = StringArgumentType.getString(c, "item");
+        String raw = RawStringArgumentType.getRawString(c, "item");
         String id = raw.contains(":") ? raw : null;   // 黑名单要求完整 ID
         if (id == null) {
             err(c, NS + "blacklist.need_full_id");
@@ -345,30 +370,38 @@ public final class WineMerchantCommand {
             return 0;
         }
 
-        // ② 让范围内的酒商从新表里重新抽取
-        ServerLevel level = src.getLevel();
-        AABB box = player.getBoundingBox().inflate(radius);
-        List<Villager> villagers = level.getEntitiesOfClass(Villager.class, box);
-
-        int done = 0;
-        for (Villager v : villagers) {
-            if (!v.getVillagerData().getProfession().equals(ModProfessions.WINE_MERCHANT.get())) {
-                continue;
-            }
-            v.setVillagerData(v.getVillagerData().setProfession(VillagerProfession.NONE));
-            v.setVillagerData(v.getVillagerData().setProfession(ModProfessions.WINE_MERCHANT.get()));
-            done++;
-        }
+        // ② 把范围内酒商的交易**补齐**到它当前等级应有的条数。
+        //
+        // ⚠ 这里曾经是「让村民失业再就业」来强制重抽:
+        //     v.setVillagerData(data.setProfession(NONE));
+        //     v.setVillagerData(data.setProfession(WINE_MERCHANT));
+        //   那是错的 —— Villager.setVillagerData() 里写着:
+        //     if (旧职业 != 新职业) { this.offers = null; }
+        //   offers 被清空后,getOffers() 重建为空列表,updateTrades() 只按**当前等级**
+        //   抽 2 条。于是老手(3 级)从 4 条掉到 2 条,之后每升一级才加 2 条,
+        //   满级也回不到正常的 10 条。玩家看到的现象就是"交易被砍了"。
+        //
+        //   现在改为:不动村民的职业与等级,把它的交易列表按**新表**重建
+        //   (条数回到 等级×2 的正常上限,内容跟着新配置走)。
+        //
+        //   ★ 返回值有两个数,别混用:
+        //     [0] = 范围内找到的酒商数量   ← 判断"有没有酒商"要用这个
+        //     [1] = 实际补上的交易条数     ← 条数已经正常时会是 0,但那不代表没找到人
+        int[] result = WineMerchantTrades.refillVillagersNear(player, radius);
+        int found = result[0];
+        int rebuiltOffers = result[1];
 
         KaleidoscopeWineMerchant.LOGGER.info(
-                "[WineMerchant] 指令重建交易表 {} 条,并刷新了 {} 名酒商", rebuilt, done);
+                "[WineMerchant] 指令重建交易表 {} 条;范围内酒商 {} 名,重建交易 {} 条",
+                rebuilt, found, rebuiltOffers);
 
-        if (done == 0) {
+        if (found == 0) {
             hint(c, NS + "refresh.rebuilt_no_villager", rebuilt, (int) radius);
             return 0;
         }
-        ok(c, NS + "refresh.rebuilt", rebuilt, done);
-        return done;
+        // 提示里给出"找到几名 / 补齐几条",两者都可能是 0 之外的值,别合并成一个数
+        ok(c, NS + "refresh.rebuilt", rebuilt, found);
+        return found;
     }
 
     private static int info(CommandContext<CommandSourceStack> c) {
@@ -388,15 +421,46 @@ public final class WineMerchantCommand {
 
     /** 让 "wine" 这类短名也能用:补全成 命名空间:路径。 */
     private static String resolveId(String raw) {
-        if (raw.contains(":")) {
-            return raw;
+        if (raw == null || raw.isBlank()) {
+            return null;
         }
+        // 完整 ID(带命名空间)直接接受
+        if (raw.contains(":")) {
+            ResourceLocation rl = ResourceLocation.tryParse(raw);
+            return rl == null ? null : rl.toString();
+        }
+        // 短名:优先在注册表里找唯一匹配。
+        // 这样连原版物品("barrel")或不在交易清单里的物品也能解析,
+        // 而不再局限于 WineGroups 里列出的那 65 种。
+        String hit = findUniquePath(BuiltInRegistries.ITEM, raw);
+        if (hit == null) {
+            hit = findUniquePath(BuiltInRegistries.BLOCK, raw);
+        }
+        if (hit != null) {
+            return hit;
+        }
+        // 兜底:按交易清单里的后缀匹配(保留原有行为)
         for (String id : WineGroups.allIds()) {
             if (id.endsWith(":" + raw)) {
                 return id;
             }
         }
         return null;
+    }
+
+    /** 在某注册表里按 path 找唯一匹配;0 个或多个匹配都返回 null。 */
+    private static String findUniquePath(Registry<?> registry, String path) {
+        String found = null;
+        for (ResourceLocation key : registry.keySet()) {
+            if (!key.getPath().equals(path)) {
+                continue;
+            }
+            if (found != null) {
+                return null; // 有歧义,交给上层用别的方式处理
+            }
+            found = key.toString();
+        }
+        return found;
     }
 
     private static ModConfigSpec.IntValue priceValue(String id, int quality) {

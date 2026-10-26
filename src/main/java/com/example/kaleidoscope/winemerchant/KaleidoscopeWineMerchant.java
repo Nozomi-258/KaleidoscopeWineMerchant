@@ -2,6 +2,7 @@ package com.example.kaleidoscope.winemerchant;
 
 import com.example.kaleidoscope.winemerchant.command.WineMerchantCommand;
 import com.example.kaleidoscope.winemerchant.config.WineMerchantConfig;
+import com.example.kaleidoscope.winemerchant.network.ModNetwork;
 import com.example.kaleidoscope.winemerchant.registry.ModBlocks;
 import com.example.kaleidoscope.winemerchant.registry.ModPoiTypes;
 import com.example.kaleidoscope.winemerchant.registry.ModProfessions;
@@ -14,6 +15,7 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.minecraft.resources.ResourceLocation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,6 +53,9 @@ public class KaleidoscopeWineMerchant {
 
         // 游戏事件总线:追加村民交易、注册指令
         NeoForge.EVENT_BUS.register(WineMerchantTrades.class);
+        // 自定义指令参数类型必须注册,否则服务端打包指令树时会失败,
+        // 表现为玩家进世界时断开并提示"无效的数据"。
+        WineMerchantCommand.ARGUMENT_TYPES.register(modEventBus);
         NeoForge.EVENT_BUS.register(WineMerchantCommand.class);
 
         // 配置改动时重新读一次文件镜像。
@@ -64,6 +69,13 @@ public class KaleidoscopeWineMerchant {
 
         // 把酒商柜台加进原版的「功能方块」创造模式标签页
         modEventBus.addListener(this::addToCreativeTab);
+
+        // ★ 网络层:注册「连接兼容性」握手包。
+        //   它让客户端与服务端**版本必须一致**才能连上 —— 否则 NeoForge 在连接阶段
+        //   就会拒绝,玩家看到明确的版本不匹配提示,而不是进服后满屏功能异常。
+        //   起因:实测 1.1.2 客户端连 1.1.1 服务器能进去,但价格显示全错。
+        modEventBus.addListener((RegisterPayloadHandlersEvent e) ->
+                ModNetwork.register(e, modContainer.getModInfo().getVersion().toString()));
 
         // 客户端:注册内建配置界面(模组页 -> 本模组 -> 配置)
         if (FMLEnvironment.dist == Dist.CLIENT) {

@@ -8,6 +8,11 @@ version = "${mod_version}"
 displayName = "${mod_name}"
 authors = "${mod_authors}"
 logoFile = "icon.png"
+# 显式声明,不依赖隐式默认值。
+#   MATCH_VERSION = 客户端与服务端版本必须一致。本模组注册了方块/物品/村民职业/
+#   数据组件,版本不一致会出现"能进服但功能全是 bug",必须挡住。
+#   连接期的真正校验还有 network/ModNetwork.java 的频道版本比对作为兜底。
+displayTest = "MATCH_VERSION"
 description = '''${mod_description}'''
 
 # ── Mixin 配置 ─────────────────────────────────────────────

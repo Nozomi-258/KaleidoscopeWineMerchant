@@ -4,7 +4,9 @@
 > 新增一位 **「酒商」村民职业** —— 他按**酿造品质**收购酒。
 > 本模组虽然代码大部分由AI编写，但是能够保证根据反馈持续维护（目前主要是neoforge 1.21.1单个版本）
 
-**最新版本 1.1.3** · 需要 [森罗物语:酒馆](https://modrinth.com/mod/kaleidoscopetavern)
+**最新版本 1.2.0** · 需要 [森罗物语:酒馆](https://modrinth.com/mod/kaleidoscopetavern)
+
+![酒商外观：旧版 / 新版](https://raw.githubusercontent.com/Nozomi-258/KaleidoscopeWineMerchant/main/docs/images/appearance-before-after-1200.jpg)
 
 ---
 
@@ -15,10 +17,10 @@
 
 仓库内容包括:
 
-- **完整模组源码** —— `src/main/java/`(18 个 `.java`)+ `src/main/resources/`(语言文件、贴图、配方、`neoforge.mods.toml`)
+- **完整模组源码** —— `src/main/java/`(21 个 `.java`)+ `src/main/resources/`(语言文件、贴图、配方、`neoforge.mods.toml`)
 - **构建脚本与 Gradle 包装器** —— `build.gradle`、`settings.gradle`、`gradle.properties`、`gradlew`、`gradlew.bat`、`gradle/wrapper/`
 - **一个维护用的小工具** —— `tools/audit_item_groups.py`(用途见下面「仓库里没有什么」一节)
-- **3 个 Mixin** —— 负责定价、`/wmc refresh` 补齐与升级去重(见下面「Mixin」一节)
+- **4 个 Mixin** —— 负责定价、`/wmc refresh` 补齐、升级补满与升级去重(见下面「Mixin」一节)
 - 问题反馈模板(`.github/ISSUE_TEMPLATE/`)
 - 许可证(`LICENSE`)与这份说明
 
@@ -58,7 +60,7 @@ gradlew.bat build
 **产物:**
 
 ```
-build/libs/kaleidoscope_wine_merchant-1.1.3.jar
+build/libs/kaleidoscope_wine_merchant-1.2.0.jar
 ```
 
 把这个 jar 放进 `.minecraft/mods/` 即可(客户端与服务端都要放)。
@@ -83,12 +85,13 @@ build/libs/kaleidoscope_wine_merchant-1.1.3.jar
 
 ### 验证状态(如实说明)
 
-- ✅ **1.1.3 已在作者本机构建并实测**:Windows 11 + JDK 21.0.12.1 + Gradle 8.10,`gradlew.bat build` 与 `gradle build` 都**构建成功**,产出 `kaleidoscope_wine_merchant-1.1.3.jar`,并在游戏内实测过定价、`/wmc refresh` 与升级去重。
-- ✅ **本仓库的源码与 1.1.3 源码逐文件一致**(2026-10-06):对 `src/` 做了 **sha256 逐文件比对**,**36/36 个文件**(18 个 `.java` + 18 个资源文件)全部相同;`kaleidoscope_wine_merchant.mixins.json` 里注册的 **3 个 Mixin** 与源码里的 3 个 Mixin 类**一一对应**(这正是 1.1.2 启动崩溃的成因,见下面「Mixin」一节)。
+- ✅ **1.2.0 已在作者本机构建成功**:Windows 11 + JDK 21.0.12.1 + Gradle 8.10,`BUILD SUCCESSFUL`,产出 `kaleidoscope_wine_merchant-1.2.0.jar`。
+- ✅ **本仓库的源码与 1.2.0 源码逐文件一致**(2026-10-26):对 `src/` 做了 **sha256 逐文件比对**,**39/39 个文件**(21 个 `.java` + 18 个资源文件)全部相同;`kaleidoscope_wine_merchant.mixins.json` 里注册的 **4 个 Mixin** 与源码里的 4 个 Mixin 类**一一对应**(这正是 1.1.2 启动崩溃的成因,见下面「Mixin」一节)。
 - ✅ **Gradle 包装器已验证**:`gradlew` 会按 `gradle/wrapper/gradle-wrapper.properties` 下载 **Gradle 8.10**,实测下载与校验均正常。
 - ✅ **历史上做过一次「干净克隆」验证**(2026-10-04,当时是 1.1.0):把仓库里要上传的文件复制到一个全新目录(排除 `local/`、`build/`、`.gradle/`、`runs/`),用**仓库自带的 `gradlew.bat build`**(而不是本机 Gradle)构建 → **BUILD SUCCESSFUL**,产物与作者发布 jar 的 **70/70 个 zip 条目逐字节一致**(整体 SHA256 不同仅因 zip 内嵌时间戳)。
 - ⚠️ **「完全冷缓存」的真实耗时仍未实测。** `GRADLE_USER_HOME` 里已有 NeoForge / Minecraft 依赖,干净克隆那次构建用了约 2分40秒(暖缓存)。**首次从零下载 Gradle + NeoForge + Minecraft 依赖的耗时是估计值**(上面写的「十几分钟到半小时」),且**国内网络可能很慢或超时**。
-- ⚠️ **本次(1.1.3)只做了文件级校验,没有重新跑一遍构建。** 上面那条「36/36 一致」是 sha256 比对,证明仓库里的源码就是作者实测过的 1.1.3 源码,但**不等于**我在这台机器上重新构建过;1.1.3 也没有在**第二台干净机器 / 冷缓存**上验证过。
+- ⚠️ **本次(1.2.0)只做了文件级校验,没有在干净克隆里重新跑一遍构建。** 上面那条「39/39 一致」是 sha256 比对,证明仓库里的源码就是作者构建过的 1.2.0 源码,但**不等于**在一台全新机器上重新构建过。
+- ⚠️ **1.2.0 的「升级稳定新增 2 条交易」修复尚未经玩家实机反馈**,有结果会更新在这里。定价与 `/wmc refresh` 在 1.1.3 及更早版本是实机实测过的。
 - ⚠️ **只在 Windows 上验证过构建**,Linux / macOS 未实测(`gradlew` 已按 LF 换行提交,理论上可用)。
 
 ### 仓库里没有什么
@@ -101,15 +104,15 @@ build/libs/kaleidoscope_wine_merchant-1.1.3.jar
 
 ## 下载 / Download
 
-模组分发在 **Modrinth**:
-
-**<https://modrinth.com/mod/kaleidoscope-wine-merchant>**
-
-或 **CurseForge**:
+模组发布在 **CurseForge**:
 
 **<https://www.curseforge.com/minecraft/mc-mods/kaleidoscope-wine-merchant>**
 
-> ⚠️ **Modrinth项目尚未公开发布**,现在点开可能显示 404。发布之后这个链接即可正常访问。
+**Modrinth** 那边还在审核中,通过后即可访问:
+
+**<https://modrinth.com/mod/kaleidoscope-wine-merchant>**
+
+> 💡 **现在请从 CurseForge 下载。** Modrinth 项目正在审核,点开可能显示 404。
 
 安装方式:把 jar 放进 `.minecraft/mods/`,并确认下面的**必需前置模组**都已安装。
 **客户端与服务端都要安装。**
@@ -117,10 +120,11 @@ build/libs/kaleidoscope_wine_merchant-1.1.3.jar
 ## 这个模组做什么
 
 - 🍷 **按品质定价**:同一瓶酒,品质越高给的绿宝石越多(六个品质档位,可逐项配置)
-- 🧾 **65 种可交易物品**:40 种酒 + 19 种鸡尾酒 + 6 种饮料,全部可在配置里开关和改价
+- 🧾 **66 种可交易物品**:40 种酒 + 20 种鸡尾酒 + 6 种饮料,全部可在配置里开关和改价
 - ⚙️ **全部可配置**:价格、池子构成、黑名单、醋的批量兑换、酒类分档、等级识货
 - 🎮 **游戏内 OP 指令**:`/wmc` 系列,改完立刻生效,不用重启
 - 🧱 **酒商柜台方块**:加入酒馆物品栏,工作台挖掘手感
+- 🎨 **自绘外观**:酒商与僵尸酒商都是中世纪商人造型(蓝软帽金边、棕袍金饰、腰带挎包)
 
 ## 玩法
 
@@ -187,13 +191,14 @@ build/libs/kaleidoscope_wine_merchant-1.1.3.jar
 ## 仓库结构 / Repository layout
 
 ```
-src/main/java/com/example/kaleidoscope/winemerchant/   模组源码(18 个 .java)
+src/main/java/com/example/kaleidoscope/winemerchant/   模组源码(21 个 .java)
 src/main/resources/                                    资源:语言文件、贴图、配方、neoforge.mods.toml
 tools/audit_item_groups.py                             分类一致性审计脚本(维护用,非构建所需)
 build.gradle                                           构建脚本(NeoForge 21.1.252)
 settings.gradle                                        插件仓库 + foojay JDK 21 自动解析
 gradle.properties                                      版本号与模组元数据(不含本机路径)
 gradlew / gradlew.bat / gradle/wrapper/                Gradle 包装器(Gradle 8.10)
+docs/images/                                           说明与更新日志里用到的图片
 .github/ISSUE_TEMPLATE/                                问题反馈模板
 LICENSE                                                许可证(MIT)
 ```
@@ -202,15 +207,16 @@ LICENSE                                                许可证(MIT)
 
 ## Mixin 与一条必须遵守的约束 / Mixins
 
-本模组用 **3 个 Mixin** 做原版事件做不到的事:
+本模组用 **4 个 Mixin** 做原版事件做不到的事:
 
 | Mixin 类 | 目标类 | 作用 |
 |---|---|---|
 | `mixin/MerchantContainerMixin` | `MerchantContainer` | **按品质定价**:`@Redirect` 掉 `MerchantOffer.assemble()` 的返回值,在产出进入结果槽之前按玩家实际放入那件酒的品质改数量 |
 | `mixin/VillagerTradeInvoker` | `AbstractVillager` | 用 `@Invoker` 暴露原版 `protected` 的 `addOffersFromItemListings(...)`,让 `/wmc refresh` 之后能**补齐**已有村民的交易条数(不再越 refresh 越少) |
-| `mixin/VillagerTradeDedupeMixin` | `Villager` | **升级去重**:`@Inject` 到 `increaseMerchantCareer` 的 TAIL,酒商升级后去掉重复的收购交易 |
+| `mixin/AbstractVillagerTradeMixin` | `AbstractVillager` | **升级补满**:`@Inject` 到 `addOffersFromItemListings` 的 HEAD,抽到与已有交易重复的就丢弃重抽,保证每级稳定新增 **2 条**(1.2.0 修复) |
+| `mixin/VillagerTradeDedupeMixin` | `Villager` | **升级去重(安全网)**:`@Inject` 到 `increaseMerchantCareer` 的 TAIL,兜底去掉重复的收购交易 |
 
-三个类都注册在 `src/main/resources/kaleidoscope_wine_merchant.mixins.json` 的 `mixins` 数组里,
+四个类都注册在 `src/main/resources/kaleidoscope_wine_merchant.mixins.json` 的 `mixins` 数组里,
 **这个列表必须与源码里的 Mixin 类一一对应**:漏注册 → 功能静默失效;注册了不存在的类 → 启动即崩。
 
 ### ⚠️ 铁律:`@Mixin` 类里不能有非 `private` 的 `static` 方法
@@ -230,21 +236,22 @@ org.spongepowered.asm.mixin.transformer.throwables.InvalidMixinException:
 
 **1.1.2的某一个内测版本就是栽在这上面** —— 升级去重的辅助方法一开始写在了 Mixin 类里。1.1.3 的修法是:
 **共享逻辑放进普通类**,Mixin 只留注入器并调用它 —— 去重逻辑现在在 `trade/TradeDedupe.java`,
-`VillagerTradeDedupeMixin` 只负责调用。
+`VillagerTradeDedupeMixin` 与 `AbstractVillagerTradeMixin` 都只负责调用。
 
 **改完 Mixin 请自检**(构建后跑一次,能提前发现同类问题):
 
 ```bash
-javap -p -cp build/libs/kaleidoscope_wine_merchant-1.1.3.jar \
+javap -p -cp build/libs/kaleidoscope_wine_merchant-1.2.0.jar \
   com.example.kaleidoscope.winemerchant.mixin.VillagerTradeDedupeMixin
 ```
 
 输出里**不应出现任何 `static` 方法**(构造器除外)。
 
-> **English**: This mod ships **3 Mixins** (quality-based pricing, an `@Invoker` exposing a
-> vanilla `protected` method, and trade de-duplication on level-up). **Never put a
-> non-`private static` method in a `@Mixin` class** — Mixin rejects it and the game crashes
-> at startup, while compilation stays green. Keep shared helpers in normal classes
+> **English**: This mod ships **4 Mixins** (quality-based pricing, an `@Invoker` exposing a
+> vanilla `protected` method, a level-up top-up that hands out exactly 2 new trades per
+> level, and trade de-duplication as a safety net). **Never put a non-`private static`
+> method in a `@Mixin` class** — Mixin rejects it and the game crashes at startup, while
+> compilation stays green. Keep shared helpers in normal classes
 > (see `trade/TradeDedupe.java`).
 
 ## 反馈 / Feedback
@@ -268,6 +275,11 @@ javap -p -cp build/libs/kaleidoscope_wine_merchant-1.1.3.jar \
 搜索 `[WineMerchant]` 开头的行贴进来即可;如果游戏崩溃,再附上 `crash-reports` 里的文件。
 
 **English is welcome.** You can write your issue in English.
+
+## 更新日志 / Changelog
+
+- **1.2.0** —— 酒商与僵尸酒商换新外观;修复「升级时只新增 1 条交易」(1.1.3 / 1.1.4 遗留问题)
+- 更早版本见 [Releases](../../releases)
 
 ## 许可
 

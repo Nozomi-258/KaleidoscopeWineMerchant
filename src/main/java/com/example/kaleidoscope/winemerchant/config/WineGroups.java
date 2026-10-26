@@ -98,7 +98,9 @@ public final class WineGroups {
             i("kaleidoscope_world_liquor", "jerk", "渣男", 3),
             i("kaleidoscope_world_liquor", "long_island_iced_tea", "长岛冰茶", 3),
             i("kaleidoscope_world_liquor", "pine_colada", "椰林飘香", 3),
-            i("kaleidoscope_world_liquor", "shrimp_cocktail", "鲜虾鸡尾酒", 3));
+            i("kaleidoscope_world_liquor", "shrimp_cocktail", "鲜虾鸡尾酒", 3),
+            // 1.1.4 新增:世界酒 1.1.12 加的鸡尾酒(模型在 mixology/ 下,与其它鸡尾酒同类)
+            i("kaleidoscope_world_liquor", "highball", "嗨棒", 3));
 
     // ══════════════════════ 饮料(6 种)══════════════════════
     // 【无品质】西瓜汁、可乐、汤力水 —— 这三个没有酿造品质,只给一个固定价
